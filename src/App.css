@@ -135,7 +135,9 @@ body::before {
   box-shadow:
     0 30px 60px -20px rgba(0, 0, 0, 0.7),
     0 0 0 1px rgba(0, 0, 0, 0.4);
-  animation: signin-rise 0.55s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+  animation:
+    signin-rise 0.55s cubic-bezier(0.2, 0.8, 0.25, 1) both,
+    signin-pulse 3.2s ease-in-out infinite;
 }
 
 @keyframes signin-rise {
@@ -145,24 +147,21 @@ body::before {
   }
 }
 
-/* Bursztynowa listwa jak dioda zasilania */
-.signin::before {
-  content: "";
-  position: absolute;
-  top: -1px; /* nakłada się na obrys karty */
-  /* od końca do początku zaokrąglenia narożników (radius karty = 14px) */
-  left: 14px;
-  right: 14px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  background-size: 200% 100%;
-  animation: power-sweep 3.2s ease-in-out infinite;
-}
-
-@keyframes power-sweep {
-  0%, 100% { background-position: 150% 0; opacity: 0.5; }
-  50% { background-position: -50% 0; opacity: 1; }
+/* Cała ramka pulsuje bursztynem jak dioda zasilania */
+@keyframes signin-pulse {
+  0%, 100% {
+    border-color: var(--border);
+    box-shadow:
+      0 30px 60px -20px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    border-color: var(--accent);
+    box-shadow:
+      0 30px 60px -20px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 0 26px -6px rgba(240, 160, 60, 0.45);
+  }
 }
 
 .signin h1 {
