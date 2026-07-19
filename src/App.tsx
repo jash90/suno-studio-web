@@ -177,6 +177,7 @@ function Studio() {
     songCount: number;
     provider: Provider;
     useLibrary: boolean;
+    excludedIds: string[];
   }): Promise<AlbumConcept> {
     return planAlbumA(params);
   }
@@ -184,10 +185,11 @@ function Studio() {
   async function handleWriteAlbumLyrics(
     provider: Provider,
     sunoModel: SunoModel,
-    useLibrary: boolean
+    useLibrary: boolean,
+    excludedIds: string[]
   ): Promise<void> {
     try {
-      await writeAlbumA({ provider, sunoModel, useLibrary });
+      await writeAlbumA({ provider, sunoModel, useLibrary, excludedIds });
     } catch {
       // błąd pojedynczej piosenki zapisuje się w jej statusie; całość nie przerywa UI
     }

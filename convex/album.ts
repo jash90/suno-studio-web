@@ -131,16 +131,24 @@ export const plan = action({
     songCount: v.number(),
     provider: v.string(),
     useLibrary: v.boolean(),
+    // opcjonalne dla kompatybilności ze starszym, zbuforowanym frontendem
+    excludedIds: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { brief, songCount, provider, useLibrary }): Promise<AlbumConcept> => {
+  handler: async (
+    ctx,
+    { brief, songCount, provider, useLibrary, excludedIds }
+  ): Promise<AlbumConcept> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Niezalogowany");
     const settings = (await ctx.runQuery(internal.settings.getInternal, {
       userId,
     })) as Settings | null;
     if (!settings) throw new Error("Brak ustawień — uzupełnij klucze API");
+    const excluded = excludedIds ?? [];
     const docs = useLibrary
-      ? ((await ctx.runQuery(internal.library.listInternal, { userId })) as LibraryDoc[])
+      ? ((await ctx.runQuery(internal.library.listInternal, { userId })) as LibraryDoc[]).filter(
+          (d) => !excluded.includes(d.id)
+        )
       : [];
     const guides = retrieveGuides(docs, useLibrary, brief);
     return generateAlbumConcept(
@@ -160,16 +168,21 @@ export const writeLyrics = action({
     provider: v.string(),
     sunoModel: v.string(),
     useLibrary: v.boolean(),
+    // opcjonalne dla kompatybilności ze starszym, zbuforowanym frontendem
+    excludedIds: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { provider, sunoModel, useLibrary }) => {
+  handler: async (ctx, { provider, sunoModel, useLibrary, excludedIds }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Niezalogowany");
     const settings = (await ctx.runQuery(internal.settings.getInternal, {
       userId,
     })) as Settings | null;
     if (!settings) throw new Error("Brak ustawień — uzupełnij klucze API");
+    const excluded = excludedIds ?? [];
     const docs = useLibrary
-      ? ((await ctx.runQuery(internal.library.listInternal, { userId })) as LibraryDoc[])
+      ? ((await ctx.runQuery(internal.library.listInternal, { userId })) as LibraryDoc[]).filter(
+          (d) => !excluded.includes(d.id)
+        )
       : [];
     const contentDocs = docs.filter((d) => d.kind !== "guide");
     const guideDocs = docs.filter((d) => d.kind === "guide");

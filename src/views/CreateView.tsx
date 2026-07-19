@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { BookOpen, FileText, Music, PenLine } from "lucide-react";
+import { Music, PenLine } from "lucide-react";
+import DocPicker from "../components/DocPicker";
 import SongEditor, { validateDraft } from "../components/SongEditor";
 import {
   LibraryDoc,
@@ -135,43 +136,7 @@ export default function CreateView({
       </label>
 
       {useLibrary && library.length > 0 && (
-        <div className="doc-picker">
-          <div className="doc-picker-actions">
-            <button className="btn-link" onClick={() => setExcludedIds(new Set())}>
-              zaznacz wszystkie
-            </button>
-            <button
-              className="btn-link"
-              onClick={() => setExcludedIds(new Set(library.map((d) => d.id)))}
-            >
-              odznacz wszystkie
-            </button>
-          </div>
-          <ul className="doc-picker-list">
-            {library.map((doc) => (
-              <li key={doc.id}>
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={!excludedIds.has(doc.id)}
-                    onChange={(e) => {
-                      const next = new Set(excludedIds);
-                      if (e.target.checked) next.delete(doc.id);
-                      else next.add(doc.id);
-                      setExcludedIds(next);
-                    }}
-                  />
-                  {doc.kind === "guide" ? (
-                    <BookOpen size={13} className="kind-guide" />
-                  ) : (
-                    <FileText size={13} className="kind-content" />
-                  )}
-                  <span className="file-name">{doc.name}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <DocPicker library={library} excludedIds={excludedIds} onChange={setExcludedIds} />
       )}
 
       <h2>2. Ustawienia generacji</h2>

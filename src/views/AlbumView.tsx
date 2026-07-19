@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Disc3, Loader2, Music, PenLine, RotateCcw, Trash2 } from "lucide-react";
+import DocPicker from "../components/DocPicker";
 import SongEditor, { validateDraft } from "../components/SongEditor";
 import {
   Album,
@@ -35,11 +36,13 @@ interface Props {
     songCount: number;
     provider: Provider;
     useLibrary: boolean;
+    excludedIds: string[];
   }) => Promise<AlbumConcept>;
   onWriteLyrics: (
     provider: Provider,
     sunoModel: SunoModel,
-    useLibrary: boolean
+    useLibrary: boolean,
+    excludedIds: string[]
   ) => Promise<void>;
   onAlbumChange: (album: Album | null) => void;
   onPatchSong: (index: number, patch: Partial<AlbumSong>) => void;
@@ -69,6 +72,8 @@ export default function AlbumView({
   const [brief, setBrief] = useState(album?.brief ?? "");
   const [songCount, setSongCount] = useState(6);
   const [useLibrary, setUseLibrary] = useState(true);
+  // Zbiór ODZNACZONYCH plików — nowe pliki są domyślnie zaznaczone
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [provider, setProvider] = useState<Provider>(settings.provider);
   const [sunoModel, setSunoModel] = useState<SunoModel>(settings.sunoModel);
   const [personaId, setPersonaId] = useState("");
@@ -89,7 +94,13 @@ export default function AlbumView({
     if (album && !confirm("Masz już aktywny album — zastąpić go nowym planem?")) return;
     setPlanning(true);
     try {
-      const concept = await onPlan({ brief, songCount, provider, useLibrary });
+      const concept = await onPlan({
+        brief,
+        songCount,
+        provider,
+        useLibrary,
+        excludedIds: [...excludedIds],
+      });
       onAlbumChange({
         id: crypto.randomUUID(),
         title: concept.albumTitle,
@@ -107,7 +118,7 @@ export default function AlbumView({
 
   function writeLyricsSequentially() {
     setError(null);
-    void onWriteLyrics(provider, sunoModel, useLibrary);
+    void onWriteLyrics(provider, sunoModel, useLibrary, [...excludedIds]);
   }
 
   /** Wysyła jedną piosenkę do Suno; song przekazany jawnie (snapshot z chwili kliknięcia). */
@@ -199,9 +210,15 @@ export default function AlbumView({
             onChange={(e) => setUseLibrary(e.target.checked)}
             disabled={library.length === 0}
           />
-          Użyj biblioteki plików
+          {library.length > 0
+            ? `Użyj biblioteki plików (zaznaczono ${library.length - excludedIds.size} z ${library.length})`
+            : "Biblioteka plików jest pusta — dodaj pliki w zakładce „Pliki”"}
         </label>
       </div>
+
+      {useLibrary && library.length > 0 && (
+        <DocPicker library={library} excludedIds={excludedIds} onChange={setExcludedIds} />
+      )}
 
       {personas.length > 0 && (
         <div className="controls-row">
