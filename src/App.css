@@ -1382,9 +1382,31 @@ audio {
     opacity: 1;
   }
 
-  /* Gęste rzędy akcji utworu — mniejsze odstępy, pełne cele dotykowe */
+  /* Akcje utworu: równa siatka 2×N zamiast poszarpanych rzędów */
   .track-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.45rem;
+  }
+
+  .track-actions button {
+    padding: 0.3rem 0.4rem;
+  }
+
+  /* Nagłówek grupy albumu zawija się zamiast wystawać poza ekran */
+  .album-group-header {
+    flex-wrap: wrap;
+    row-gap: 0.45rem;
+  }
+
+  .album-group-actions {
+    flex-wrap: wrap;
+    row-gap: 0.45rem;
+  }
+
+  /* Ramka focusa po tapnięciu zakładki — wewnątrz przycisku, nie ponad paskiem */
+  .bottom-nav button:focus-visible {
+    outline-offset: -2px;
   }
 
   .album-player-now {
