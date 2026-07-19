@@ -1116,8 +1116,12 @@ audio {
     font-size: 14px;
   }
 
+  /* Pasek: logo w pierwszym wierszu, nawigacja przewijana w drugim na całą
+     szerokość; safe-area dla notcha w trybie PWA (standalone). */
   .topbar {
-    padding: 0.55rem 0.9rem;
+    padding: 0.5rem 0.9rem 0;
+    padding-top: calc(0.5rem + env(safe-area-inset-top));
+    gap: 0.2rem 0.8rem;
   }
 
   .topbar-left {
@@ -1128,19 +1132,93 @@ audio {
     display: none;
   }
 
+  .topbar nav {
+    flex-basis: 100%;
+    margin: 0 -0.9rem;
+    padding: 0 0.6rem;
+  }
+
+  /* Większe cele dotykowe zakładek */
+  .topbar nav button {
+    padding: 0.7rem 0.7rem;
+    font-size: 0.74rem;
+  }
+
+  .topbar nav button.active::after {
+    bottom: 0;
+  }
+
   .view {
-    padding: 1.1rem 0.9rem 2.5rem;
+    padding: 1.1rem 0.9rem calc(2.5rem + env(safe-area-inset-bottom));
+  }
+
+  .controls-row {
+    gap: 0.7rem;
   }
 
   .controls-row label {
     min-width: 100%;
   }
 
+  .controls-row label.checkbox {
+    padding-bottom: 0;
+  }
+
+  /* iOS: pola < 16px powodują auto-zoom przy fokusie — wymuszamy 16px */
+  input,
+  textarea,
+  select,
+  label input,
+  label textarea,
+  label select {
+    font-size: 16px;
+  }
+
+  /* Wygodniejsze checkboxy pod palec */
+  .checkbox input {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Główne przyciski akcji łatwe do trafienia */
+  button {
+    min-height: 42px;
+  }
+
+  .btn-icon,
+  .btn-link,
+  .album-toggle,
+  button.badge {
+    min-height: 0;
+  }
+
+  .track {
+    padding: 0.75rem 0.8rem;
+  }
+
+  .track-cover {
+    width: 44px;
+    height: 44px;
+  }
+
+  .album-song {
+    padding: 0.65rem 0.8rem;
+  }
+
   .album-player {
     flex-wrap: wrap;
+    bottom: calc(0.6rem + env(safe-area-inset-bottom));
   }
 
   .album-player-now {
     width: 100%;
+  }
+
+  .doc-picker-list {
+    grid-template-columns: 1fr;
+  }
+
+  .signin {
+    padding: 1.8rem 1.4rem 1.5rem;
   }
 }
