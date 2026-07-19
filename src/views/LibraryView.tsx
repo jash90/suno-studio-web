@@ -205,7 +205,8 @@ export default function LibraryView({
     setCollapsed(next);
   }
 
-  /** Pobiera cały album jako ZIP: pliki "NN - Tytuł.mp3/.wav" wg kolejności płyty. */
+  /** Pobiera cały album jako ZIP: WSZYSTKIE warianty każdego utworu,
+   *  pliki "NN - Tytuł (A/B).mp3/.wav" wg kolejności płyty. */
   async function downloadAlbum(name: string, list: Track[], format: "mp3" | "wav") {
     setMessage(null);
     const done = list.filter((t) => t.status === "SUCCESS");
@@ -219,19 +220,26 @@ export default function LibraryView({
     try {
       for (let i = 0; i < done.length; i++) {
         const track = done[i];
-        const variant = getVariants(track)[variantIndex[track.id] ?? 0];
-        if (!variant) continue;
-        const fileName = `${String((track.albumIndex ?? i) + 1).padStart(2, "0")} - ${sanitizeFileName(track.title)}.${format}`;
-        setMessage(`Przygotowanie (${format.toUpperCase()}): ${i + 1}/${done.length} — ${track.title}`);
-        try {
-          let url = variant.audioUrl;
-          if (format === "wav") {
-            url = variant.wavUrl ?? (await onConvertToWav(track.id, variant.audioId));
+        const variants = getVariants(track);
+        const nn = String((track.albumIndex ?? i) + 1).padStart(2, "0");
+        for (let vi = 0; vi < variants.length; vi++) {
+          const variant = variants[vi];
+          const letter = VARIANT_LETTERS[vi] ?? String(vi + 1);
+          const suffix = variants.length > 1 ? ` (${letter})` : "";
+          const fileName = `${nn} - ${sanitizeFileName(track.title)}${suffix}.${format}`;
+          setMessage(
+            `Przygotowanie (${format.toUpperCase()}): ${i + 1}/${done.length} — ${track.title}${suffix}`
+          );
+          try {
+            let url = variant.audioUrl;
+            if (format === "wav") {
+              url = variant.wavUrl ?? (await onConvertToWav(track.id, variant.audioId));
+            }
+            if (!url) throw new Error("brak pliku audio");
+            files.push({ url, name: fileName });
+          } catch (e) {
+            errors.push(`${track.title}${suffix}: ${e instanceof Error ? e.message : e}`);
           }
-          if (!url) throw new Error("brak pliku audio");
-          files.push({ url, name: fileName });
-        } catch (e) {
-          errors.push(`${track.title}: ${e instanceof Error ? e.message : e}`);
         }
       }
       const { saved, errors: dlErrors } = await downloadZip(
@@ -241,7 +249,7 @@ export default function LibraryView({
       );
       const allErrors = [...errors, ...dlErrors];
       setMessage(
-        `Zapisano ZIP „${name}” (${format.toUpperCase()}): ${saved}/${done.length} utworów` +
+        `Zapisano ZIP „${name}” (${format.toUpperCase()}): ${saved}/${files.length + errors.length} plików` +
           (allErrors.length ? ` (błędy: ${allErrors.join("; ")})` : "")
       );
     } finally {
