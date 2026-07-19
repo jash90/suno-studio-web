@@ -72,6 +72,10 @@ export interface Settings {
   // zwykłe klucze API nie mają dostępu do rozliczeń u żadnego z providerów
   anthropicAdminKey: string;
   openaiAdminKey: string;
+  // Własne prompty systemowe (puste = wbudowany szablon z src/prompts.ts);
+  // brief i poradniki z biblioteki są doklejane automatycznie poza szablonem
+  songSystemPrompt: string;
+  albumSystemPrompt: string;
 }
 
 // Zweryfikowane listy modeli czatowych (stan: 2026-07); wartości spoza listy
@@ -107,6 +111,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showBalances: true,
   anthropicAdminKey: "",
   openaiAdminKey: "",
+  songSystemPrompt: "",
+  albumSystemPrompt: "",
 };
 
 export interface Balances {
