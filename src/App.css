@@ -1404,6 +1404,19 @@ audio {
     row-gap: 0.45rem;
   }
 
+  /* Wymuszone łamanie: Odtwórz + A/B/A+B w pierwszym wierszu,
+     przyciski pobierania (MP3, WAV, Okładki, Teksty) w drugim */
+  .album-group-actions::before {
+    content: "";
+    order: 1;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .album-group-actions .variant-switch ~ button {
+    order: 2;
+  }
+
   /* Ramka focusa po tapnięciu zakładki — wewnątrz przycisku, nie ponad paskiem */
   .bottom-nav button:focus-visible {
     outline-offset: -2px;
