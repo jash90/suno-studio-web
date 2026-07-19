@@ -16,18 +16,44 @@ auth.addHttpRoutes(http);
 const PRIVATE_HOST =
   /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.|169\.254\.|\[)/i;
 
+// Odrzuca URL-e prowadzące poza publiczne domeny: adresy prywatne, IPv6 oraz
+// wszelkie literały IP (także zakodowane dziesiętnie/hex/ósemkowo jak
+// http://2130706433/). CDN-y używają nazw domenowych — host bez litery
+// (poza schematem 0x...) to zawsze literał IP.
+function urlBlocked(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return true;
+  }
+  if (!/^https?:$/.test(u.protocol)) return true;
+  const host = u.hostname;
+  if (PRIVATE_HOST.test(host)) return true;
+  if (/^0x/i.test(host) || !/[a-z]/i.test(host)) return true;
+  return false;
+}
+
 const download = httpAction(async (ctx, request) => {
   if ((await ctx.auth.getUserIdentity()) === null) {
     return new Response("Unauthorized", { status: 401 });
   }
-  const url = new URL(request.url).searchParams.get("url");
-  if (!url || !/^https?:\/\//i.test(url)) {
+  let url = new URL(request.url).searchParams.get("url");
+  if (!url || urlBlocked(url)) {
     return new Response("Bad url", { status: 400 });
   }
-  if (PRIVATE_HOST.test(new URL(url).hostname)) {
-    return new Response("Bad url", { status: 400 });
+  // Przekierowania podążamy ręcznie, walidując każdy hop — inaczej publiczny
+  // URL mógłby zrobić 302 na adres prywatny i obejść blokadę.
+  let upstream = await fetch(url, { redirect: "manual" });
+  for (let hop = 0; hop < 3 && upstream.status >= 300 && upstream.status < 400; hop++) {
+    const location = upstream.headers.get("Location");
+    if (!location) break;
+    url = new URL(location, url).toString();
+    if (urlBlocked(url)) {
+      return new Response("Bad url", { status: 400 });
+    }
+    upstream = await fetch(url, { redirect: "manual" });
   }
-  const upstream = await fetch(url);
   if (!upstream.ok || !upstream.body) {
     return new Response(`Upstream ${upstream.status}`, { status: 502 });
   }
