@@ -34,13 +34,17 @@ function urlBlocked(raw: string): boolean {
   return false;
 }
 
+// CORS na KAŻDEJ odpowiedzi (także błędach) — bez tego przeglądarka zamienia
+// 401/400/502 w nieczytelne "Failed to fetch".
+const CORS = { "Access-Control-Allow-Origin": "*" };
+
 const download = httpAction(async (ctx, request) => {
   if ((await ctx.auth.getUserIdentity()) === null) {
-    return new Response("Unauthorized", { status: 401 });
+    return new Response("Unauthorized", { status: 401, headers: CORS });
   }
   let url = new URL(request.url).searchParams.get("url");
   if (!url || urlBlocked(url)) {
-    return new Response("Bad url", { status: 400 });
+    return new Response("Bad url", { status: 400, headers: CORS });
   }
   // Przekierowania podążamy ręcznie, walidując każdy hop — inaczej publiczny
   // URL mógłby zrobić 302 na adres prywatny i obejść blokadę.
@@ -50,12 +54,12 @@ const download = httpAction(async (ctx, request) => {
     if (!location) break;
     url = new URL(location, url).toString();
     if (urlBlocked(url)) {
-      return new Response("Bad url", { status: 400 });
+      return new Response("Bad url", { status: 400, headers: CORS });
     }
     upstream = await fetch(url, { redirect: "manual" });
   }
   if (!upstream.ok || !upstream.body) {
-    return new Response(`Upstream ${upstream.status}`, { status: 502 });
+    return new Response(`Upstream ${upstream.status}`, { status: 502, headers: CORS });
   }
   const headers = new Headers();
   headers.set(

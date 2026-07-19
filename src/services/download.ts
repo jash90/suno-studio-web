@@ -31,6 +31,9 @@ export async function fetchBlob(url: string): Promise<Blob> {
   const res = await fetch(proxied(url), {
     headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
   });
+  if (res.status === 401) {
+    throw new Error("Sesja wygasła — odśwież stronę (F5) i spróbuj ponownie");
+  }
   if (!res.ok) throw new Error(`Pobieranie nie powiodło się (HTTP ${res.status})`);
   return res.blob();
 }
