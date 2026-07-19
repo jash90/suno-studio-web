@@ -149,7 +149,7 @@ body::before {
 .signin::before {
   content: "";
   position: absolute;
-  top: 0;
+  top: -1px; /* nakłada się na obrys karty */
   /* od końca do początku zaokrąglenia narożników (radius karty = 14px) */
   left: 14px;
   right: 14px;
