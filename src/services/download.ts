@@ -26,6 +26,21 @@ export function setDownloadAuthToken(token: string | null): void {
   authToken = token;
 }
 
+// Licznik długich operacji (pobierania/ZIP) — auto-aktualizacja PWA czeka,
+// aż aplikacja będzie bezczynna, żeby reload nie przerywał pobierania.
+let busyCount = 0;
+const idleWaiters: (() => void)[] = [];
+export function beginBusy(): void {
+  busyCount++;
+}
+export function endBusy(): void {
+  busyCount = Math.max(0, busyCount - 1);
+  if (busyCount === 0) idleWaiters.splice(0).forEach((resolve) => resolve());
+}
+export function whenIdle(): Promise<void> {
+  return busyCount === 0 ? Promise.resolve() : new Promise((r) => idleWaiters.push(r));
+}
+
 /** Pobiera plik z CDN Suno. Najpierw bezpośrednio (CDN-y Suno wystawiają
  *  CORS `*`, a proxy Convex ma limit 20 MB odpowiedzi — urywał duże WAV-y);
  *  proxy Convex zostaje fallbackiem dla hostów bez CORS. */
@@ -64,6 +79,19 @@ export async function downloadFile(url: string, filename: string): Promise<void>
 
 /** Buduje ZIP z listy plików i pobiera go jako jeden plik. Zwraca liczbę zapisanych. */
 export async function downloadZip(
+  files: { url: string; name: string }[],
+  zipName: string,
+  onProgress?: (done: number, total: number) => void
+): Promise<{ saved: number; errors: string[] }> {
+  beginBusy();
+  try {
+    return await downloadZipInner(files, zipName, onProgress);
+  } finally {
+    endBusy();
+  }
+}
+
+async function downloadZipInner(
   files: { url: string; name: string }[],
   zipName: string,
   onProgress?: (done: number, total: number) => void

@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt": nowy SW czeka na updateSW() z main.tsx (po bezczynności),
+      // zamiast przejmować kontrolę i przeładowywać kartę w trakcie pobierania
+      registerType: "prompt",
+      injectRegister: false,
       manifest: {
         name: "Suno Studio",
         short_name: "Suno Studio",

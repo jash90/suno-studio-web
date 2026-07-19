@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import Player from "../components/Player";
 import {
+  beginBusy,
   downloadFile,
   downloadZip,
+  endBusy,
   imageExt,
   sanitizeFileName,
 } from "../services/download";
@@ -215,6 +217,7 @@ export default function LibraryView({
       return;
     }
     setAlbumBusy(`${name}:${format}`);
+    beginBusy(); // konwersje WAV przed downloadZip też blokują auto-reload PWA
     const files: { url: string; name: string }[] = [];
     const errors: string[] = [];
     try {
@@ -253,6 +256,7 @@ export default function LibraryView({
           (allErrors.length ? ` (błędy: ${allErrors.join("; ")})` : "")
       );
     } finally {
+      endBusy();
       setAlbumBusy(null);
     }
   }
