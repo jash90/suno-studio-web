@@ -1205,17 +1205,23 @@ audio {
    Responsywność
    ------------------------------------------------------------ */
 
+/* Dolny pasek zakładek — istnieje tylko na mobile */
+.bottom-nav {
+  display: none;
+}
+
 @media (max-width: 720px) {
   :root {
     font-size: 14px;
+    --bottom-nav-h: 56px;
   }
 
-  /* Pasek: logo w pierwszym wierszu, nawigacja przewijana w drugim na całą
-     szerokość; safe-area dla notcha w trybie PWA (standalone). */
+  /* Pasek: jeden wiersz — logo + wyloguj; zakładki przenoszą się na dół.
+     Safe-area dla notcha w trybie PWA (standalone). */
   .topbar {
-    padding: 0.5rem 0.9rem 0;
+    padding: 0.5rem 0.9rem;
     padding-top: calc(0.5rem + env(safe-area-inset-top));
-    gap: 0.2rem 0.8rem;
+    flex-wrap: nowrap;
   }
 
   .topbar-left {
@@ -1226,24 +1232,83 @@ audio {
     display: none;
   }
 
-  .topbar nav {
-    flex-basis: 100%;
-    margin: 0 -0.9rem;
-    padding: 0 0.6rem;
+  /* Zakładki górne ukryte — nawigacja idzie dolnym paskiem; zostaje wyloguj */
+  .topbar nav button:not(.btn-icon) {
+    display: none;
   }
 
-  /* Większe cele dotykowe zakładek */
-  .topbar nav button {
-    padding: 0.7rem 0.7rem;
-    font-size: 0.74rem;
-  }
-
-  .topbar nav button.active::after {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
+    z-index: 20;
+    background: linear-gradient(180deg, #1f1a1b, #171314);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
+  .bottom-nav button {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: var(--bottom-nav-h);
+    padding: 0.35rem 0.1rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bottom-nav button.active {
+    color: var(--accent);
+  }
+
+  .bottom-nav-icon {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .bottom-nav-badge {
+    position: absolute;
+    top: -0.35rem;
+    right: -0.6rem;
+    background: var(--accent);
+    color: #171314;
+    border-radius: 999px;
+    padding: 0.1rem 0.28rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .bottom-nav-dot {
+    position: absolute;
+    top: -0.15rem;
+    right: -0.3rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* Treść nie może chować się pod dolnym paskiem */
   .view {
-    padding: 1.1rem 0.9rem calc(2.5rem + env(safe-area-inset-bottom));
+    padding: 1.1rem 0.9rem
+      calc(1.6rem + var(--bottom-nav-h) + env(safe-area-inset-bottom));
   }
 
   .controls-row {
@@ -1299,9 +1364,27 @@ audio {
     padding: 0.65rem 0.8rem;
   }
 
+  /* Sticky player siedzi NAD dolnym paskiem zakładek */
   .album-player {
     flex-wrap: wrap;
-    bottom: calc(0.6rem + env(safe-area-inset-bottom));
+    bottom: calc(0.6rem + var(--bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+
+  /* Kolejka: tytuł przycina się zamiast łamać wiersz, akcje zawsze widoczne
+     (na dotyku nie ma hovera) */
+  .album-queue li > button:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .queue-item-actions {
+    opacity: 1;
+  }
+
+  /* Gęste rzędy akcji utworu — mniejsze odstępy, pełne cele dotykowe */
+  .track-actions {
+    gap: 0.45rem;
   }
 
   .album-player-now {

@@ -1,5 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Headphones, LogOut } from "lucide-react";
+import {
+  Disc3,
+  FolderOpen,
+  Headphones,
+  ListMusic,
+  LogOut,
+  Settings as SettingsIcon,
+  Sparkles,
+} from "lucide-react";
 import {
   Authenticated,
   AuthLoading,
@@ -258,6 +266,22 @@ function Studio() {
 
   if (!ready) return <div className="app-loading">Wczytywanie...</div>;
 
+  // Jedno źródło zakładek dla górnego paska (desktop) i dolnego (mobile)
+  const tabs: {
+    id: View;
+    label: string;
+    Icon: typeof Headphones;
+    count?: number;
+    dot?: boolean;
+  }[] = [
+    { id: "create", label: "Twórz", Icon: Sparkles },
+    { id: "album", label: "Album", Icon: Disc3 },
+    { id: "files", label: "Pliki", Icon: FolderOpen, count: library!.length },
+    { id: "library", label: "Biblioteka", Icon: ListMusic, count: pendingCount },
+    { id: "player", label: "Odtwarzacz", Icon: Headphones, dot: playback !== null },
+    { id: "settings", label: "Ustawienia", Icon: SettingsIcon },
+  ];
+
   return (
     <div className="app">
       <header className="topbar">
@@ -272,24 +296,17 @@ function Studio() {
           )}
         </div>
         <nav>
-          <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}>
-            Twórz
-          </button>
-          <button className={view === "album" ? "active" : ""} onClick={() => setView("album")}>
-            Album
-          </button>
-          <button className={view === "files" ? "active" : ""} onClick={() => setView("files")}>
-            Pliki{library!.length > 0 ? ` (${library!.length})` : ""}
-          </button>
-          <button className={view === "library" ? "active" : ""} onClick={() => setView("library")}>
-            Biblioteka{pendingCount > 0 ? ` (${pendingCount})` : ""}
-          </button>
-          <button className={view === "player" ? "active" : ""} onClick={() => setView("player")}>
-            Odtwarzacz{playback ? " ♪" : ""}
-          </button>
-          <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>
-            Ustawienia
-          </button>
+          {tabs.map(({ id, label, count, dot }) => (
+            <button
+              key={id}
+              className={view === id ? "active" : ""}
+              onClick={() => setView(id)}
+            >
+              {label}
+              {count ? ` (${count})` : ""}
+              {dot ? " ♪" : ""}
+            </button>
+          ))}
           <button className="btn-icon" title="Wyloguj" onClick={() => void signOut()}>
             <LogOut size={16} />
           </button>
@@ -370,6 +387,23 @@ function Studio() {
           />
         </div>
       </main>
+      {/* Dolny pasek zakładek — widoczny tylko na mobile (CSS) */}
+      <nav className="bottom-nav">
+        {tabs.map(({ id, label, Icon, count, dot }) => (
+          <button
+            key={id}
+            className={view === id ? "active" : ""}
+            onClick={() => setView(id)}
+          >
+            <span className="bottom-nav-icon">
+              <Icon size={20} />
+              {count ? <span className="bottom-nav-badge">{count}</span> : null}
+              {dot ? <span className="bottom-nav-dot" /> : null}
+            </span>
+            {label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
