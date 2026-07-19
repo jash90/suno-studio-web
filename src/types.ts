@@ -174,9 +174,10 @@ export interface PlayQueueItem {
 }
 
 export interface Playback {
-  name: string; // nazwa albumu
+  name: string; // nazwa albumu / "Kolejka" dla ręcznie budowanej
   queue: PlayQueueItem[];
   index: number;
+  repeat: boolean; // po ostatnim utworze wróć do pierwszego
 }
 
 export type TrackStatus =

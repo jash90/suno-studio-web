@@ -105,9 +105,12 @@ function Studio() {
   const [balances, setBalances] = useState<Balances>({});
 
   function seekPlaybackTo(index: number) {
-    setPlayback((p) =>
-      !p ? p : index < 0 || index >= p.queue.length ? null : { ...p, index }
-    );
+    setPlayback((p) => {
+      if (!p) return p;
+      if (index < 0) return null;
+      if (index >= p.queue.length) return p.repeat ? { ...p, index: 0 } : null;
+      return { ...p, index };
+    });
   }
   const [balancesRefreshing, setBalancesRefreshing] = useState(false);
 
@@ -331,6 +334,7 @@ function Studio() {
             playback={playback}
             onSeekTo={seekPlaybackTo}
             onStop={() => setPlayback(null)}
+            onChange={setPlayback}
           />
         </div>
         <div className={view === "library" ? "" : "hidden"}>
@@ -341,6 +345,13 @@ function Studio() {
               setPlayback(p);
               setView("player");
             }}
+            onAddToQueue={(item) =>
+              setPlayback((p) =>
+                p
+                  ? { ...p, queue: [...p.queue, item] }
+                  : { name: "Kolejka", queue: [item], index: 0, repeat: false }
+              )
+            }
             onStopPlayback={() => setPlayback(null)}
             onDelete={(id) => void removeTrackM({ domainId: id })}
             onRetry={async (id) => {

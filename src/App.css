@@ -939,6 +939,36 @@ audio {
   color: var(--accent);
 }
 
+.album-queue li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.album-queue li > button:first-child {
+  flex: 1;
+}
+
+.queue-item-actions {
+  display: inline-flex;
+  gap: 0.1rem;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.album-queue li:hover .queue-item-actions,
+.album-queue li:focus-within .queue-item-actions {
+  opacity: 1;
+}
+
+.queue-item-actions .btn-icon {
+  padding: 0.15rem 0.3rem;
+}
+
+.btn-icon.accent {
+  color: var(--accent);
+}
+
 .album-player-now {
   white-space: nowrap;
   overflow: hidden;

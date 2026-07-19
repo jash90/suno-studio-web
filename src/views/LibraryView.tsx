@@ -7,6 +7,7 @@ import {
   FileAudio,
   FileText,
   ImageDown,
+  ListPlus,
   Loader2,
   Play,
   RotateCcw,
@@ -148,6 +149,7 @@ interface Props {
   tracks: Track[];
   playback: Playback | null;
   onPlay: (playback: Playback) => void;
+  onAddToQueue: (item: PlayQueueItem) => void;
   onStopPlayback: () => void;
   onDelete: (id: string) => void;
   onRetry: (id: string) => Promise<void>;
@@ -172,6 +174,7 @@ export default function LibraryView({
   tracks,
   playback,
   onPlay,
+  onAddToQueue,
   onStopPlayback,
   onDelete,
   onRetry,
@@ -523,6 +526,22 @@ export default function LibraryView({
               <button onClick={() => setExpanded(expanded === track.id ? null : track.id)}>
                 {expanded === track.id ? "Ukryj tekst" : "Pokaż tekst"}
               </button>
+              {track.status === "SUCCESS" && variant && (variant.audioUrl || variant.streamAudioUrl) && (
+                <button
+                  onClick={() => {
+                    onAddToQueue({
+                      trackId: track.id,
+                      label:
+                        (track.albumIndex !== undefined ? `${track.albumIndex + 1}. ` : "") +
+                        variantName(track, selectedIndex),
+                      url: (variant.audioUrl || variant.streamAudioUrl)!,
+                    });
+                    setMessage(`Dodano do kolejki: ${variantName(track, selectedIndex)}`);
+                  }}
+                >
+                  <ListPlus size={14} /> Do kolejki
+                </button>
+              )}
               {track.lyrics && (
                 <button
                   onClick={() => {
@@ -612,6 +631,7 @@ export default function LibraryView({
                           name: section.name!,
                           queue: buildQueue(section.tracks, zipMode[section.name!] ?? "both"),
                           index: 0,
+                          repeat: false,
                         })
                       }
                     >
