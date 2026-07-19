@@ -8,8 +8,9 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { api } from "../convex/_generated/api";
+import { setDownloadAuthToken } from "./services/download";
 import BalanceBar from "./components/BalanceBar";
 import AlbumView from "./views/AlbumView";
 import CreateView from "./views/CreateView";
@@ -83,6 +84,9 @@ function SignIn() {
 
 function Studio() {
   const { signOut } = useAuthActions();
+  // Proxy /download wymaga tokenu — trzymamy aktualny w module download.ts
+  const authToken = useAuthToken();
+  useEffect(() => setDownloadAuthToken(authToken ?? null), [authToken]);
   const [view, setView] = useState<View>("create");
   const [balances, setBalances] = useState<Balances>({});
   const [balancesRefreshing, setBalancesRefreshing] = useState(false);

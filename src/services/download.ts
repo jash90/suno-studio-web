@@ -20,9 +20,17 @@ function proxied(url: string): string {
   return `${SITE_URL}/download?url=${encodeURIComponent(url)}`;
 }
 
+// Proxy wymaga zalogowania — Studio wstrzykuje tu aktualny token JWT.
+let authToken: string | null = null;
+export function setDownloadAuthToken(token: string | null): void {
+  authToken = token;
+}
+
 /** Pobiera plik (z CDN Suno) przez proxy Convex — omija CORS. */
 export async function fetchBlob(url: string): Promise<Blob> {
-  const res = await fetch(proxied(url));
+  const res = await fetch(proxied(url), {
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+  });
   if (!res.ok) throw new Error(`Pobieranie nie powiodło się (HTTP ${res.status})`);
   return res.blob();
 }

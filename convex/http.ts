@@ -10,11 +10,21 @@ auth.addHttpRoutes(http);
 // Proxy pobierania: klient (inny origin niż CDN Suno) nie może fetchować plików
 // audio/okładek z powodu CORS. httpAction pobiera plik server-side i streamuje go
 // z nagłówkiem CORS, więc klient dostaje bloba do downloadu / spakowania w ZIP.
-// ponytail: otwarty GET-proxy publicznych URL-i; jeśli nadużywany — ograniczyć do
-// hostów CDN Suno (allowlist po hostname).
-const download = httpAction(async (_ctx, request) => {
+// Wymaga zalogowania (Bearer token) — bez tego byłby publicznym open-proxy (SSRF).
+// ponytail: hosty CDN Suno bywają zmienne, więc zamiast allowlisty hostów jest
+// auth + blokada adresów prywatnych; jeśli nadużywane — dodać allowlistę.
+const PRIVATE_HOST =
+  /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.|169\.254\.|\[)/i;
+
+const download = httpAction(async (ctx, request) => {
+  if ((await ctx.auth.getUserIdentity()) === null) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   const url = new URL(request.url).searchParams.get("url");
   if (!url || !/^https?:\/\//i.test(url)) {
+    return new Response("Bad url", { status: 400 });
+  }
+  if (PRIVATE_HOST.test(new URL(url).hostname)) {
     return new Response("Bad url", { status: 400 });
   }
   const upstream = await fetch(url);
@@ -42,7 +52,7 @@ http.route({
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   }),
