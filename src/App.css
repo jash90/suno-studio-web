@@ -893,6 +893,21 @@ audio {
   box-shadow: none;
 }
 
+/* Fala dźwięku (wavesurfer) */
+.wave-canvas {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.wave-time {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .album-queue.open {
   max-height: 60vh;
 }

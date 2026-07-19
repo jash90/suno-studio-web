@@ -1,4 +1,5 @@
 import { Disc3, SkipBack, SkipForward, Square } from "lucide-react";
+import Waveform from "../components/Waveform";
 import { Playback } from "../types";
 
 interface Props {
@@ -44,18 +45,16 @@ export default function PlayerView({ playback, onSeekTo, onStop }: Props) {
           <span className="album-player-now">
             {playback.index + 1}/{playback.queue.length} · {item.label}
           </span>
-          <audio
-            key={playback.index}
-            className="player"
-            controls
-            autoPlay
-            src={item.url}
-            onEnded={() => onSeekTo(playback.index + 1)}
-            onError={() => onSeekTo(playback.index + 1)}
-          />
           <button className="btn-icon" title="Zatrzymaj" onClick={onStop}>
             <Square size={16} />
           </button>
+        </div>
+        <div className="album-player-bar">
+          <Waveform
+            key={playback.index}
+            url={item.url}
+            onFinish={() => onSeekTo(playback.index + 1)}
+          />
         </div>
         <ol className="album-queue open">
           {playback.queue.map((q, i) => (
