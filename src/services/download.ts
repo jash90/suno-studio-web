@@ -26,8 +26,16 @@ export function setDownloadAuthToken(token: string | null): void {
   authToken = token;
 }
 
-/** Pobiera plik (z CDN Suno) przez proxy Convex — omija CORS. */
+/** Pobiera plik z CDN Suno. Najpierw bezpośrednio (CDN-y Suno wystawiają
+ *  CORS `*`, a proxy Convex ma limit 20 MB odpowiedzi — urywał duże WAV-y);
+ *  proxy Convex zostaje fallbackiem dla hostów bez CORS. */
 export async function fetchBlob(url: string): Promise<Blob> {
+  try {
+    const direct = await fetch(url);
+    if (direct.ok) return direct.blob();
+  } catch {
+    // brak CORS na hoście albo błąd sieci — próbujemy przez proxy
+  }
   const res = await fetch(proxied(url), {
     headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
   });
