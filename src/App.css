@@ -887,6 +887,16 @@ audio {
   min-width: 0;
 }
 
+/* Wersja w zakładce Odtwarzacz — statyczny panel, pełna kolejka */
+.album-player.standalone {
+  position: static;
+  box-shadow: none;
+}
+
+.album-queue.open {
+  max-height: 60vh;
+}
+
 /* Rozwijana kolejka odtwarzania */
 .album-queue {
   list-style: none;

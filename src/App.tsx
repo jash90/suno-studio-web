@@ -16,6 +16,7 @@ import AlbumView from "./views/AlbumView";
 import CreateView from "./views/CreateView";
 import FilesView from "./views/FilesView";
 import LibraryView from "./views/LibraryView";
+import PlayerView from "./views/PlayerView";
 import SettingsView from "./views/SettingsView";
 import {
   Album,
@@ -25,13 +26,14 @@ import {
   DEFAULT_SETTINGS,
   LibraryDoc,
   PersonaModel,
+  Playback,
   Provider,
   Settings,
   SongDraft,
   SunoModel,
 } from "./types";
 
-type View = "create" | "album" | "files" | "library" | "settings";
+type View = "create" | "album" | "files" | "library" | "player" | "settings";
 
 /** Trzyma ostatnią znaną wartość kwerendy. Przy reconnect'cie Convexa (deploy
  *  funkcji, odświeżenie tokenu, zanik sieci) useQuery chwilowo zwraca undefined —
@@ -98,7 +100,15 @@ function Studio() {
   const authToken = useAuthToken();
   useEffect(() => setDownloadAuthToken(authToken ?? null), [authToken]);
   const [view, setView] = useState<View>("create");
+  // odtwarzanie albumu — na poziomie Studio, żeby grało niezależnie od zakładki
+  const [playback, setPlayback] = useState<Playback | null>(null);
   const [balances, setBalances] = useState<Balances>({});
+
+  function seekPlaybackTo(index: number) {
+    setPlayback((p) =>
+      !p ? p : index < 0 || index >= p.queue.length ? null : { ...p, index }
+    );
+  }
   const [balancesRefreshing, setBalancesRefreshing] = useState(false);
 
   const settingsData = useLatest(useQuery(api.settings.get));
@@ -271,6 +281,9 @@ function Studio() {
           <button className={view === "library" ? "active" : ""} onClick={() => setView("library")}>
             Biblioteka{pendingCount > 0 ? ` (${pendingCount})` : ""}
           </button>
+          <button className={view === "player" ? "active" : ""} onClick={() => setView("player")}>
+            Odtwarzacz{playback ? " ♪" : ""}
+          </button>
           <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>
             Ustawienia
           </button>
@@ -313,9 +326,22 @@ function Studio() {
             onRemove={(id) => void removeLibraryM({ domainId: id })}
           />
         </div>
+        <div className={view === "player" ? "" : "hidden"}>
+          <PlayerView
+            playback={playback}
+            onSeekTo={seekPlaybackTo}
+            onStop={() => setPlayback(null)}
+          />
+        </div>
         <div className={view === "library" ? "" : "hidden"}>
           <LibraryView
             tracks={tracks!}
+            playback={playback}
+            onPlay={(p) => {
+              setPlayback(p);
+              setView("player");
+            }}
+            onStopPlayback={() => setPlayback(null)}
             onDelete={(id) => void removeTrackM({ domainId: id })}
             onRetry={async (id) => {
               await retryGenA({ domainId: id });

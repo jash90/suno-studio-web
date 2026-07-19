@@ -165,6 +165,20 @@ export interface Album {
   createdAt: string;
 }
 
+// --- Zakładka Odtwarzacz ---
+
+export interface PlayQueueItem {
+  trackId: string;
+  label: string; // "N. Tytuł (A)"
+  url: string;
+}
+
+export interface Playback {
+  name: string; // nazwa albumu
+  queue: PlayQueueItem[];
+  index: number;
+}
+
 export type TrackStatus =
   | "PENDING"
   | "TEXT_SUCCESS"

@@ -7,12 +7,9 @@ import {
   FileAudio,
   FileText,
   ImageDown,
-  ListMusic,
   Loader2,
   Play,
   RotateCcw,
-  SkipBack,
-  SkipForward,
   Square,
   UserRound,
 } from "lucide-react";
@@ -26,7 +23,7 @@ import {
   imageExt,
   sanitizeFileName,
 } from "../services/download";
-import { Track, TrackVariant } from "../types";
+import { Playback, PlayQueueItem, Track, TrackVariant } from "../types";
 
 /** Warianty utworu; starsze wpisy historii mają tylko pola płaskie — sklejamy z nich wariant A. */
 function getVariants(track: Track): TrackVariant[] {
@@ -149,6 +146,9 @@ function TrackProgress({ track, now }: { track: Track; now: number }) {
 
 interface Props {
   tracks: Track[];
+  playback: Playback | null;
+  onPlay: (playback: Playback) => void;
+  onStopPlayback: () => void;
   onDelete: (id: string) => void;
   onRetry: (id: string) => Promise<void>;
   onCreatePersona: (
@@ -170,6 +170,9 @@ const STATUS_LABELS: Record<Track["status"], string> = {
 
 export default function LibraryView({
   tracks,
+  playback,
+  onPlay,
+  onStopPlayback,
   onDelete,
   onRetry,
   onCreatePersona,
@@ -187,22 +190,9 @@ export default function LibraryView({
   const [albumBusy, setAlbumBusy] = useState<string | null>(null);
   // które warianty trafiają do ZIP-ów albumu (per album, domyślnie oba)
   const [zipMode, setZipMode] = useState<Record<string, "a" | "b" | "both">>({});
-  // kolejka odtwarzania albumu: pozycje zbudowane wg przełącznika A/B/A+B
-  interface QueueItem {
-    trackId: string;
-    label: string; // "N. Tytuł (A)"
-    url: string;
-  }
-  const [albumPlay, setAlbumPlay] = useState<{
-    name: string;
-    queue: QueueItem[];
-    index: number;
-    showQueue: boolean;
-  } | null>(null);
-
   /** Buduje kolejkę odtwarzania albumu z wariantów wybranych przełącznikiem. */
-  function buildQueue(list: Track[], mode: "a" | "b" | "both"): QueueItem[] {
-    const items: QueueItem[] = [];
+  function buildQueue(list: Track[], mode: "a" | "b" | "both"): PlayQueueItem[] {
+    const items: PlayQueueItem[] = [];
     list.forEach((t, i) => {
       if (t.status !== "SUCCESS") return;
       const all = getVariants(t);
@@ -221,13 +211,6 @@ export default function LibraryView({
       }
     });
     return items;
-  }
-
-  function seekQueue(offset: number) {
-    if (!albumPlay) return;
-    const next = albumPlay.index + offset;
-    if (next < 0 || next >= albumPlay.queue.length) setAlbumPlay(null); // koniec płyty
-    else setAlbumPlay({ ...albumPlay, index: next });
   }
 
   function toggleCollapsed(name: string) {
@@ -427,7 +410,7 @@ export default function LibraryView({
           return (
           <li
             key={track.id}
-            className={`track${albumPlay?.queue[albumPlay.index]?.trackId === track.id ? " playing" : ""}`}
+            className={`track${playback?.queue[playback.index]?.trackId === track.id ? " playing" : ""}`}
           >
             <div className="track-header">
               {(variant?.imageUrl ?? track.imageUrl) && (
@@ -615,8 +598,8 @@ export default function LibraryView({
               </span>
               {section.name && (
                 <span className="album-group-actions">
-                  {albumPlay?.name === section.name ? (
-                    <button onClick={() => setAlbumPlay(null)}>
+                  {playback?.name === section.name ? (
+                    <button onClick={onStopPlayback}>
                       <Square size={13} /> Zatrzymaj
                     </button>
                   ) : (
@@ -625,11 +608,10 @@ export default function LibraryView({
                         buildQueue(section.tracks, zipMode[section.name!] ?? "both").length === 0
                       }
                       onClick={() =>
-                        setAlbumPlay({
+                        onPlay({
                           name: section.name!,
                           queue: buildQueue(section.tracks, zipMode[section.name!] ?? "both"),
                           index: 0,
-                          showQueue: false,
                         })
                       }
                     >
@@ -703,58 +685,6 @@ export default function LibraryView({
                 </span>
               )}
             </div>
-            {albumPlay?.name === section.name && albumPlay.queue[albumPlay.index] && (
-              <div className="album-player">
-                <div className="album-player-bar">
-                  <button
-                    className="btn-icon"
-                    title="Poprzedni"
-                    disabled={albumPlay.index === 0}
-                    onClick={() => seekQueue(-1)}
-                  >
-                    <SkipBack size={15} />
-                  </button>
-                  <button className="btn-icon" title="Następny" onClick={() => seekQueue(1)}>
-                    <SkipForward size={15} />
-                  </button>
-                  <span className="album-player-now">
-                    {albumPlay.index + 1}/{albumPlay.queue.length} ·{" "}
-                    {albumPlay.queue[albumPlay.index].label}
-                  </span>
-                  <audio
-                    key={albumPlay.index}
-                    className="player"
-                    controls
-                    autoPlay
-                    src={albumPlay.queue[albumPlay.index].url}
-                    onEnded={() => seekQueue(1)}
-                    onError={() => seekQueue(1)}
-                  />
-                  <button
-                    className="btn-icon"
-                    title="Kolejka odtwarzania"
-                    onClick={() => setAlbumPlay({ ...albumPlay, showQueue: !albumPlay.showQueue })}
-                  >
-                    <ListMusic size={15} />
-                  </button>
-                </div>
-                {albumPlay.showQueue && (
-                  <ol className="album-queue">
-                    {albumPlay.queue.map((q, i) => (
-                      <li key={i}>
-                        <button
-                          className={i === albumPlay.index ? "active" : ""}
-                          onClick={() => setAlbumPlay({ ...albumPlay, index: i })}
-                        >
-                          {i === albumPlay.index ? "▸ " : ""}
-                          {q.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </div>
-            )}
             {!isCollapsed && (
               <ul className="track-list">{section.tracks.map(renderTrack)}</ul>
             )}
