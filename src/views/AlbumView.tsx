@@ -211,7 +211,7 @@ export default function AlbumView({
             disabled={library.length === 0}
           />
           {library.length > 0
-            ? `Użyj biblioteki plików (zaznaczono ${library.length - excludedIds.size} z ${library.length})`
+            ? "Użyj biblioteki plików"
             : "Biblioteka plików jest pusta — dodaj pliki w zakładce „Pliki”"}
         </label>
       </div>

@@ -131,7 +131,7 @@ export default function CreateView({
           disabled={library.length === 0}
         />
         {library.length > 0
-          ? `Użyj biblioteki plików (zaznaczono ${library.length - excludedIds.size} z ${library.length} — fragmenty dobierane automatycznie do briefu)`
+          ? "Użyj biblioteki plików (fragmenty dobierane automatycznie do briefu)"
           : "Biblioteka plików jest pusta — dodaj pliki w zakładce „Pliki”"}
       </label>
 

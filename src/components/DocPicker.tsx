@@ -24,6 +24,9 @@ export default function DocPicker({
         >
           odznacz wszystkie
         </button>
+        <span className="doc-picker-count">
+          zaznaczono {library.length - excludedIds.size} z {library.length}
+        </span>
       </div>
       <ul className="doc-picker-list">
         {library.map((doc) => (

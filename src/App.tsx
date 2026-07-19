@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Headphones, LogOut } from "lucide-react";
 import {
   Authenticated,
@@ -32,6 +32,16 @@ import {
 } from "./types";
 
 type View = "create" | "album" | "files" | "library" | "settings";
+
+/** Trzyma ostatnią znaną wartość kwerendy. Przy reconnect'cie Convexa (deploy
+ *  funkcji, odświeżenie tokenu, zanik sieci) useQuery chwilowo zwraca undefined —
+ *  bez latcha cały interfejs przeskakiwał na „Wczytywanie..." i montował się od
+ *  nowa (wszystko "skakało"). Z latchem pełny ekran ładowania jest tylko raz. */
+function useLatest<T>(value: T | undefined): T | undefined {
+  const ref = useRef<T | undefined>(undefined);
+  if (value !== undefined) ref.current = value;
+  return ref.current;
+}
 
 function SignIn() {
   const { signIn } = useAuthActions();
@@ -91,11 +101,11 @@ function Studio() {
   const [balances, setBalances] = useState<Balances>({});
   const [balancesRefreshing, setBalancesRefreshing] = useState(false);
 
-  const settingsData = useQuery(api.settings.get);
-  const tracks = useQuery(api.tracks.list);
-  const library = useQuery(api.library.list);
-  const personas = useQuery(api.personas.list);
-  const album = useQuery(api.album.get);
+  const settingsData = useLatest(useQuery(api.settings.get));
+  const tracks = useLatest(useQuery(api.tracks.list));
+  const library = useLatest(useQuery(api.library.list));
+  const personas = useLatest(useQuery(api.personas.list));
+  const album = useLatest(useQuery(api.album.get));
 
   const saveSettingsM = useMutation(api.settings.save);
   const removeTrackM = useMutation(api.tracks.remove);
