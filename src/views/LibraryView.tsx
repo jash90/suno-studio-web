@@ -180,6 +180,8 @@ export default function LibraryView({
   const [variantIndex, setVariantIndex] = useState<Record<string, number>>({});
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [albumBusy, setAlbumBusy] = useState<string | null>(null);
+  // które warianty trafiają do ZIP-ów albumu (per album, domyślnie oba)
+  const [zipMode, setZipMode] = useState<Record<string, "a" | "b" | "both">>({});
   // odtwarzanie albumu po kolei: nazwa albumu + id aktualnego utworu
   const [albumPlay, setAlbumPlay] = useState<{ name: string; trackId: string } | null>(null);
 
@@ -207,9 +209,14 @@ export default function LibraryView({
     setCollapsed(next);
   }
 
-  /** Pobiera cały album jako ZIP: WSZYSTKIE warianty każdego utworu,
-   *  pliki "NN - Tytuł (A/B).mp3/.wav" wg kolejności płyty. */
-  async function downloadAlbum(name: string, list: Track[], format: "mp3" | "wav") {
+  /** Pobiera cały album jako ZIP wg kolejności płyty; mode decyduje, które
+   *  warianty trafiają do paczki (A / B / oba — pliki "NN - Tytuł (A/B)"). */
+  async function downloadAlbum(
+    name: string,
+    list: Track[],
+    format: "mp3" | "wav",
+    mode: "a" | "b" | "both"
+  ) {
     setMessage(null);
     const done = list.filter((t) => t.status === "SUCCESS");
     if (done.length === 0) {
@@ -223,11 +230,14 @@ export default function LibraryView({
     try {
       for (let i = 0; i < done.length; i++) {
         const track = done[i];
-        const variants = getVariants(track);
+        const all = getVariants(track);
+        // "a"/"b" — jeden wskazany wariant (fallback do A, gdy B nie istnieje)
+        const variants =
+          mode === "both" ? all : [all[mode === "b" ? 1 : 0] ?? all[0]].filter(Boolean);
         const nn = String((track.albumIndex ?? i) + 1).padStart(2, "0");
         for (let vi = 0; vi < variants.length; vi++) {
           const variant = variants[vi];
-          const letter = VARIANT_LETTERS[vi] ?? String(vi + 1);
+          const letter = VARIANT_LETTERS[all.indexOf(variant)] ?? String(vi + 1);
           const suffix = variants.length > 1 ? ` (${letter})` : "";
           const fileName = `${nn} - ${sanitizeFileName(track.title)}${suffix}.${format}`;
           setMessage(
@@ -563,9 +573,27 @@ export default function LibraryView({
                       <Play size={13} /> Odtwórz album
                     </button>
                   )}
+                  <span className="variant-switch" title="Które warianty trafiają do ZIP (MP3/WAV)">
+                    {(["a", "b", "both"] as const).map((m) => (
+                      <button
+                        key={m}
+                        className={(zipMode[section.name!] ?? "both") === m ? "active" : ""}
+                        onClick={() => setZipMode({ ...zipMode, [section.name!]: m })}
+                      >
+                        {m === "both" ? "A+B" : m.toUpperCase()}
+                      </button>
+                    ))}
+                  </span>
                   <button
                     disabled={albumBusy !== null}
-                    onClick={() => downloadAlbum(section.name!, section.tracks, "mp3")}
+                    onClick={() =>
+                      downloadAlbum(
+                        section.name!,
+                        section.tracks,
+                        "mp3",
+                        zipMode[section.name!] ?? "both"
+                      )
+                    }
                   >
                     {busyKey === `${section.name}:mp3` ? (
                       <Loader2 size={13} className="spin" />
@@ -576,7 +604,14 @@ export default function LibraryView({
                   </button>
                   <button
                     disabled={albumBusy !== null}
-                    onClick={() => downloadAlbum(section.name!, section.tracks, "wav")}
+                    onClick={() =>
+                      downloadAlbum(
+                        section.name!,
+                        section.tracks,
+                        "wav",
+                        zipMode[section.name!] ?? "both"
+                      )
+                    }
                   >
                     {busyKey === `${section.name}:wav` ? (
                       <Loader2 size={13} className="spin" />
