@@ -5,10 +5,14 @@ import {
   Disc3,
   Download,
   FileAudio,
+  FileText,
   ImageDown,
+  ListMusic,
   Loader2,
   Play,
   RotateCcw,
+  SkipBack,
+  SkipForward,
   Square,
   UserRound,
 } from "lucide-react";
@@ -16,6 +20,7 @@ import Player from "../components/Player";
 import {
   beginBusy,
   downloadFile,
+  downloadText,
   downloadZip,
   endBusy,
   imageExt,
@@ -182,24 +187,47 @@ export default function LibraryView({
   const [albumBusy, setAlbumBusy] = useState<string | null>(null);
   // które warianty trafiają do ZIP-ów albumu (per album, domyślnie oba)
   const [zipMode, setZipMode] = useState<Record<string, "a" | "b" | "both">>({});
-  // odtwarzanie albumu po kolei: nazwa albumu + id aktualnego utworu
-  const [albumPlay, setAlbumPlay] = useState<{ name: string; trackId: string } | null>(null);
+  // kolejka odtwarzania albumu: pozycje zbudowane wg przełącznika A/B/A+B
+  interface QueueItem {
+    trackId: string;
+    label: string; // "N. Tytuł (A)"
+    url: string;
+  }
+  const [albumPlay, setAlbumPlay] = useState<{
+    name: string;
+    queue: QueueItem[];
+    index: number;
+    showQueue: boolean;
+  } | null>(null);
 
-  function playableTracks(list: Track[]): Track[] {
-    return list.filter((t) => {
-      const v = getVariants(t)[variantIndex[t.id] ?? 0];
-      return t.status === "SUCCESS" && (v?.audioUrl || v?.streamAudioUrl);
+  /** Buduje kolejkę odtwarzania albumu z wariantów wybranych przełącznikiem. */
+  function buildQueue(list: Track[], mode: "a" | "b" | "both"): QueueItem[] {
+    const items: QueueItem[] = [];
+    list.forEach((t, i) => {
+      if (t.status !== "SUCCESS") return;
+      const all = getVariants(t);
+      const chosen =
+        mode === "both" ? all : [all[mode === "b" ? 1 : 0] ?? all[0]].filter(Boolean);
+      for (const v of chosen) {
+        const url = v.audioUrl || v.streamAudioUrl;
+        if (!url) continue;
+        const letter =
+          all.length > 1 ? ` (${VARIANT_LETTERS[all.indexOf(v)] ?? all.indexOf(v) + 1})` : "";
+        items.push({
+          trackId: t.id,
+          label: `${(t.albumIndex ?? i) + 1}. ${t.title}${letter}`,
+          url,
+        });
+      }
     });
+    return items;
   }
 
-  function advanceAlbum(name: string, list: Track[]) {
-    const playable = playableTracks(list);
-    const current = playable.findIndex((t) => t.id === albumPlay?.trackId);
-    if (current >= 0 && current + 1 < playable.length) {
-      setAlbumPlay({ name, trackId: playable[current + 1].id });
-    } else {
-      setAlbumPlay(null); // koniec płyty
-    }
+  function seekQueue(offset: number) {
+    if (!albumPlay) return;
+    const next = albumPlay.index + offset;
+    if (next < 0 || next >= albumPlay.queue.length) setAlbumPlay(null); // koniec płyty
+    else setAlbumPlay({ ...albumPlay, index: next });
   }
 
   function toggleCollapsed(name: string) {
@@ -302,6 +330,24 @@ export default function LibraryView({
     }
   }
 
+  /** Zapisuje teksty wszystkich piosenek albumu do jednego pliku .txt. */
+  function downloadAlbumLyrics(name: string, list: Track[]) {
+    const withLyrics = list.filter((t) => t.lyrics);
+    if (withLyrics.length === 0) {
+      setMessage("Album nie ma jeszcze tekstów");
+      return;
+    }
+    const sep = "\n\n" + "—".repeat(40) + "\n\n";
+    const body = withLyrics
+      .map(
+        (t, i) =>
+          `${String((t.albumIndex ?? i) + 1).padStart(2, "0")}. ${t.title}\nStyl: ${t.style}\n\n${t.lyrics}`
+      )
+      .join(sep);
+    downloadText(`${name}${sep}${body}`, `${sanitizeFileName(name)} - teksty.txt`);
+    setMessage(`Zapisano teksty albumu „${name}” (${withLyrics.length})`);
+  }
+
   const anyInProgress = tracks.some((t) => IN_PROGRESS.includes(t.status));
   useEffect(() => {
     if (!anyInProgress) return;
@@ -381,7 +427,7 @@ export default function LibraryView({
           return (
           <li
             key={track.id}
-            className={`track${albumPlay?.trackId === track.id ? " playing" : ""}`}
+            className={`track${albumPlay?.queue[albumPlay.index]?.trackId === track.id ? " playing" : ""}`}
           >
             <div className="track-header">
               {(variant?.imageUrl ?? track.imageUrl) && (
@@ -494,6 +540,19 @@ export default function LibraryView({
               <button onClick={() => setExpanded(expanded === track.id ? null : track.id)}>
                 {expanded === track.id ? "Ukryj tekst" : "Pokaż tekst"}
               </button>
+              {track.lyrics && (
+                <button
+                  onClick={() => {
+                    downloadText(
+                      `${track.title}\nStyl: ${track.style}\n\n${track.lyrics}`,
+                      `${sanitizeFileName(track.title)}.txt`
+                    );
+                    setMessage(`Zapisano tekst „${track.title}"`);
+                  }}
+                >
+                  <FileText size={14} /> Tekst (TXT)
+                </button>
+              )}
               {track.status === "SUCCESS" && variant && (
                 <button
                   onClick={() => setPersonaFor(personaFor === track.id ? null : track.id)}
@@ -562,11 +621,15 @@ export default function LibraryView({
                     </button>
                   ) : (
                     <button
-                      disabled={playableTracks(section.tracks).length === 0}
+                      disabled={
+                        buildQueue(section.tracks, zipMode[section.name!] ?? "both").length === 0
+                      }
                       onClick={() =>
                         setAlbumPlay({
                           name: section.name!,
-                          trackId: playableTracks(section.tracks)[0].id,
+                          queue: buildQueue(section.tracks, zipMode[section.name!] ?? "both"),
+                          index: 0,
+                          showQueue: false,
                         })
                       }
                     >
@@ -631,33 +694,67 @@ export default function LibraryView({
                     )}{" "}
                     Okładki
                   </button>
+                  <button
+                    disabled={albumBusy !== null}
+                    onClick={() => downloadAlbumLyrics(section.name!, section.tracks)}
+                  >
+                    <FileText size={13} /> Teksty
+                  </button>
                 </span>
               )}
             </div>
-            {albumPlay?.name === section.name &&
-              (() => {
-                const current = section.tracks.find((t) => t.id === albumPlay.trackId);
-                const v = current
-                  ? getVariants(current)[variantIndex[current.id] ?? 0]
-                  : undefined;
-                if (!current || !v) return null;
-                return (
-                  <div className="album-player">
-                    <span className="album-player-now">
-                      Teraz: {(current.albumIndex ?? 0) + 1}. {current.title}
-                    </span>
-                    <audio
-                      key={current.id}
-                      className="player"
-                      controls
-                      autoPlay
-                      src={v.audioUrl || v.streamAudioUrl}
-                      onEnded={() => advanceAlbum(section.name!, section.tracks)}
-                      onError={() => advanceAlbum(section.name!, section.tracks)}
-                    />
-                  </div>
-                );
-              })()}
+            {albumPlay?.name === section.name && albumPlay.queue[albumPlay.index] && (
+              <div className="album-player">
+                <div className="album-player-bar">
+                  <button
+                    className="btn-icon"
+                    title="Poprzedni"
+                    disabled={albumPlay.index === 0}
+                    onClick={() => seekQueue(-1)}
+                  >
+                    <SkipBack size={15} />
+                  </button>
+                  <button className="btn-icon" title="Następny" onClick={() => seekQueue(1)}>
+                    <SkipForward size={15} />
+                  </button>
+                  <span className="album-player-now">
+                    {albumPlay.index + 1}/{albumPlay.queue.length} ·{" "}
+                    {albumPlay.queue[albumPlay.index].label}
+                  </span>
+                  <audio
+                    key={albumPlay.index}
+                    className="player"
+                    controls
+                    autoPlay
+                    src={albumPlay.queue[albumPlay.index].url}
+                    onEnded={() => seekQueue(1)}
+                    onError={() => seekQueue(1)}
+                  />
+                  <button
+                    className="btn-icon"
+                    title="Kolejka odtwarzania"
+                    onClick={() => setAlbumPlay({ ...albumPlay, showQueue: !albumPlay.showQueue })}
+                  >
+                    <ListMusic size={15} />
+                  </button>
+                </div>
+                {albumPlay.showQueue && (
+                  <ol className="album-queue">
+                    {albumPlay.queue.map((q, i) => (
+                      <li key={i}>
+                        <button
+                          className={i === albumPlay.index ? "active" : ""}
+                          onClick={() => setAlbumPlay({ ...albumPlay, index: i })}
+                        >
+                          {i === albumPlay.index ? "▸ " : ""}
+                          {q.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            )}
             {!isCollapsed && (
               <ul className="track-list">{section.tracks.map(renderTrack)}</ul>
             )}

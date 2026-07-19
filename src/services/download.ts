@@ -77,6 +77,11 @@ export async function downloadFile(url: string, filename: string): Promise<void>
   triggerDownload(await fetchBlob(url), filename);
 }
 
+/** Zapisuje tekst jako plik .txt (np. teksty piosenek). */
+export function downloadText(text: string, filename: string): void {
+  triggerDownload(new Blob([text], { type: "text/plain;charset=utf-8" }), filename);
+}
+
 /** Buduje ZIP z listy plików i pobiera go jako jeden plik. Zwraca liczbę zapisanych. */
 export async function downloadZip(
   files: { url: string; name: string }[],
