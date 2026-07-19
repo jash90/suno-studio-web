@@ -208,6 +208,56 @@ export const startGeneration = action({
   },
 });
 
+/** Ponawia nieudaną generację: nowy task Suno z tym samym draftem, w tym samym
+ *  wierszu biblioteki. Bez persony — utwór przechowuje tylko jej nazwę, nie id. */
+export const retryGeneration = action({
+  args: { domainId: v.string() },
+  handler: async (ctx, { domainId }): Promise<void> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Niezalogowany");
+    const settings = await requireSettings(ctx, userId);
+    if (!settings.sunoKey) throw new Error("Brak klucza sunoapi.org — uzupełnij w Ustawieniach");
+    const track = (await ctx.runQuery(internal.tracks.getInternal, {
+      userId,
+      domainId,
+    })) as Track | null;
+    if (!track) throw new Error("Nie znaleziono utworu");
+    if (track.status !== "FAILED") throw new Error("Ponowić można tylko nieudaną generację");
+
+    const taskId = await createTask(
+      settings.sunoKey,
+      { title: track.title, style: track.style, lyrics: track.lyrics },
+      track.sunoModel,
+      track.instrumental
+    );
+    // czysty obiekt — bez error/variants/mediów z nieudanej próby
+    const retried: Track = {
+      id: track.id,
+      taskId,
+      title: track.title,
+      style: track.style,
+      lyrics: track.lyrics,
+      sunoModel: track.sunoModel,
+      provider: track.provider,
+      instrumental: track.instrumental,
+      album: track.album,
+      albumIndex: track.albumIndex,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+    await ctx.runMutation(internal.tracks.replaceInternal, {
+      userId,
+      domainId,
+      track: retried,
+    });
+    await ctx.scheduler.runAfter(0, internal.suno.poll, {
+      userId,
+      domainId,
+      attempt: 0,
+    });
+  },
+});
+
 /** Jeden krok durable pollingu: odczyt statusu, patch utworu, ewentualne przeplanowanie. */
 export const poll = internalAction({
   args: { userId: v.id("users"), domainId: v.string(), attempt: v.number() },

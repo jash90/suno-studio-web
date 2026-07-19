@@ -8,6 +8,7 @@ import {
   ImageDown,
   Loader2,
   Play,
+  RotateCcw,
   Square,
   UserRound,
 } from "lucide-react";
@@ -142,6 +143,7 @@ function TrackProgress({ track, now }: { track: Track; now: number }) {
 interface Props {
   tracks: Track[];
   onDelete: (id: string) => void;
+  onRetry: (id: string) => Promise<void>;
   onCreatePersona: (
     track: Track,
     audioId: string,
@@ -162,10 +164,12 @@ const STATUS_LABELS: Record<Track["status"], string> = {
 export default function LibraryView({
   tracks,
   onDelete,
+  onRetry,
   onCreatePersona,
   onConvertToWav,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [retryBusy, setRetryBusy] = useState<string | null>(null);
   const [personaFor, setPersonaFor] = useState<string | null>(null);
   const [wavBusy, setWavBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -441,6 +445,28 @@ export default function LibraryView({
                   }}
                 >
                   <ImageDown size={14} /> Okładka
+                </button>
+              )}
+              {track.status === "FAILED" && (
+                <button
+                  disabled={retryBusy === track.id}
+                  onClick={async () => {
+                    setRetryBusy(track.id);
+                    try {
+                      await onRetry(track.id);
+                      setMessage(`„${track.title}" wysłano ponownie do Suno`);
+                    } catch (e) {
+                      setMessage(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setRetryBusy(null);
+                    }
+                  }}
+                >
+                  {retryBusy === track.id ? (
+                    <><Loader2 size={14} className="spin" /> Wysyłanie...</>
+                  ) : (
+                    <><RotateCcw size={14} /> Generuj ponownie</>
+                  )}
                 </button>
               )}
               <button onClick={() => setExpanded(expanded === track.id ? null : track.id)}>

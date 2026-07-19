@@ -117,6 +117,7 @@ function Studio() {
 
   const writeSongA = useAction(api.generate.generateSongAction);
   const startGenA = useAction(api.suno.startGeneration);
+  const retryGenA = useAction(api.suno.retryGeneration);
   const convertWavA = useAction(api.suno.convertToWav);
   const createPersonaA = useAction(api.suno.createPersona);
   const getCreditsA = useAction(api.suno.getCredits);
@@ -316,6 +317,10 @@ function Studio() {
           <LibraryView
             tracks={tracks!}
             onDelete={(id) => void removeTrackM({ domainId: id })}
+            onRetry={async (id) => {
+              await retryGenA({ domainId: id });
+              void refreshBalances(); // ponowna generacja zjada kredyty Suno
+            }}
             onCreatePersona={handleCreatePersona}
             onConvertToWav={(domainId, audioId) => convertWavA({ domainId, audioId })}
           />

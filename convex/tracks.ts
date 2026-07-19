@@ -88,6 +88,15 @@ export const insertInternal = internalMutation({
   },
 });
 
+/** Podmienia cały obiekt utworu (patchInternal merguje, więc nie umie czyścić pól). */
+export const replaceInternal = internalMutation({
+  args: { userId: v.id("users"), domainId: v.string(), track: v.any() },
+  handler: async (ctx, { userId, domainId, track }) => {
+    const row = await findRow(ctx, userId, domainId);
+    if (row) await ctx.db.patch(row._id, { data: track });
+  },
+});
+
 export const patchInternal = internalMutation({
   args: { userId: v.id("users"), domainId: v.string(), patch: v.any() },
   handler: async (ctx, { userId, domainId, patch }) => {
