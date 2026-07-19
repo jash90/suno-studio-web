@@ -35,6 +35,12 @@ Zasady dla "lyrics" (maks. {MAX_LYRICS} znaków):
 - Buduj dramaturgię: intro → zwrotki → pre-chorus narastający → refren → bridge →
   finałowy refren (może mieć zmieniony tekst) → wyciszone outro.
 - Refren powtarzaj w całości; drobne zmiany w finałowym refrenie wzmacniają puentę.
+- DBAJ O RYTM: utrzymuj spójne metrum i zbliżoną liczbę sylab w odpowiadających
+  sobie wersach (zwrotka do zwrotki, refren do refrenu), żeby fraza naturalnie
+  siadała w takcie przy śpiewaniu.
+- DBAJ O RYMY: stosuj konsekwentny układ rymów (np. AABB lub ABAB) w obrębie
+  sekcji; preferuj rymy dokładne lub bliskie współbrzmienia, unikaj banalnych
+  rymów częstochowskich i łamania naturalnego szyku zdania „pod rym".
 
 Zasady dla "title": chwytliwy tytuł, maks. {MAX_TITLE} znaków.`;
 
@@ -53,7 +59,9 @@ Zwróć JSON: {"albumTitle": "...", "styleDirection": "...", "songs": [...]} z D
   * "brief": 2-4 zdania — o czym jest, kluczowe obrazy i emocje, miejsce w
     dramaturgii albumu (w języku briefu),
   * "styleHints": po angielsku — co wyróżnia ten utwór w ramach styleDirection
-    (tempo, instrument prowadzący, charakter wokalu, energia).`;
+    (tempo, instrument prowadzący, charakter wokalu, energia); podaj też metrum/
+    rytm utworu, by teksty pisane z tego planu miały spójną, śpiewną frazę
+    i konsekwentne rymy.`;
 
 /** Podmienia limity wybranego modelu Suno w szablonie promptu piosenki. */
 export function fillSongPrompt(template: string, model: SunoModel): string {
