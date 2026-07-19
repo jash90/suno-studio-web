@@ -82,7 +82,9 @@ export async function downloadZip(
     }
   }
   if (saved > 0) {
-    const out = await zip.generateAsync({ type: "blob" });
+    // STORE: audio (mp3/wav) jest nieściśliwe — DEFLATE na ~500 MB WAV-ów
+    // potrafiło wieszać kartę na minuty
+    const out = await zip.generateAsync({ type: "blob", compression: "STORE" });
     triggerDownload(out, zipName);
   }
   return { saved, errors };
