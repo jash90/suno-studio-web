@@ -154,7 +154,6 @@ function Studio() {
 
   const saveSettingsM = useMutation(api.settings.save);
   const removeTrackM = useMutation(api.tracks.remove);
-  const patchTrackM = useMutation(api.tracks.patch);
   const addLibraryM = useMutation(api.library.add);
   const setKindM = useMutation(api.library.setKind);
   const removeLibraryM = useMutation(api.library.remove);
@@ -165,8 +164,6 @@ function Studio() {
   const startGenA = useAction(api.suno.startGeneration);
   const retryGenA = useAction(api.suno.retryGeneration);
   const convertWavA = useAction(api.suno.convertToWav);
-  const genCoverA = useAction(api.cover.generateTrackCover);
-  const genAlbumCoverA = useAction(api.cover.generateAlbumCover);
   const createPersonaA = useAction(api.suno.createPersona);
   const getCreditsA = useAction(api.suno.getCredits);
   const planAlbumA = useAction(api.album.plan);
@@ -404,17 +401,6 @@ function Studio() {
             }}
             onCreatePersona={handleCreatePersona}
             onConvertToWav={(domainId, audioId) => convertWavA({ domainId, audioId })}
-            onGenerateCover={async (id) => {
-              await genCoverA({ domainId: id });
-            }}
-            onGenerateAlbumCover={async (name) => {
-              await genAlbumCoverA({ album: name });
-            }}
-            onSetCoverSource={async (ids, source) => {
-              for (const id of ids) {
-                await patchTrackM({ domainId: id, patch: { coverSource: source } });
-              }
-            }}
           />
         </div>
         <div className={view === "settings" ? "" : "hidden"}>
