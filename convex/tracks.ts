@@ -77,6 +77,17 @@ export const getInternal = internalQuery({
   },
 });
 
+export const listByAlbumInternal = internalQuery({
+  args: { userId: v.id("users"), album: v.string() },
+  handler: async (ctx, { userId, album }): Promise<Track[]> => {
+    const rows = await ctx.db
+      .query("tracks")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    return rows.map((r) => r.data as Track).filter((t) => t.album === album);
+  },
+});
+
 export const insertInternal = internalMutation({
   args: { userId: v.id("users"), track: v.any() },
   handler: async (ctx, { userId, track }) => {

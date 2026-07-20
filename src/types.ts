@@ -214,6 +214,9 @@ export interface Track {
   album?: string; // nazwa albumu, jeśli utwór powstał w trybie Album
   albumIndex?: number; // numer utworu na płycie (kolejność z planu albumu)
   wavUrl?: string; // URL po jednorazowej konwersji do WAV
+  aiImageUrl?: string; // okładka wygenerowana przez OpenAI (Convex storage)
+  aiImageStorageId?: string; // Id pliku w Convex storage (do ew. sprzątania)
+  coverSource?: "suno" | "ai"; // która okładka jest aktywna; undefined = suno
   audioUrl?: string;
   streamAudioUrl?: string;
   imageUrl?: string;

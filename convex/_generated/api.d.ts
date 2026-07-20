@@ -11,6 +11,7 @@
 import type * as album from "../album.js";
 import type * as auth from "../auth.js";
 import type * as balances from "../balances.js";
+import type * as cover from "../cover.js";
 import type * as generate from "../generate.js";
 import type * as http from "../http.js";
 import type * as lib_llm from "../lib/llm.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   album: typeof album;
   auth: typeof auth;
   balances: typeof balances;
+  cover: typeof cover;
   generate: typeof generate;
   http: typeof http;
   "lib/llm": typeof lib_llm;

@@ -141,7 +141,7 @@ async function getTaskStatus(sunoKey: string, taskId: string): Promise<TaskUpdat
   }
 }
 
-async function requireSettings(
+export async function requireSettings(
   ctx: ActionCtx,
   userId: Id<"users">
 ): Promise<Settings> {

@@ -11,6 +11,7 @@ import {
   Loader2,
   Play,
   RotateCcw,
+  Sparkles,
   Square,
   UserRound,
 } from "lucide-react";
@@ -43,6 +44,17 @@ function getVariants(track: Track): TrackVariant[] {
 }
 
 const VARIANT_LETTERS = ["A", "B", "C", "D"];
+
+/** Aktywna okładka: AI (jeśli wybrana i istnieje) albo oryginalna z Suno. */
+function activeCover(track: Track, variant?: TrackVariant): string | undefined {
+  if (track.coverSource === "ai" && track.aiImageUrl) return track.aiImageUrl;
+  return variant?.imageUrl ?? track.imageUrl;
+}
+
+/** Rozszerzenie pliku okładki — URL-e Convex storage (AI) nie mają rozszerzenia. */
+function coverExt(url: string, track: Track): string {
+  return url === track.aiImageUrl ? "png" : imageExt(url);
+}
 
 function plural(n: number): string {
   if (n === 1) return "utwór";
@@ -160,6 +172,9 @@ interface Props {
     description: string
   ) => Promise<void>;
   onConvertToWav: (domainId: string, audioId: string) => Promise<string>;
+  onGenerateCover: (domainId: string) => Promise<void>;
+  onGenerateAlbumCover: (album: string) => Promise<void>;
+  onSetCoverSource: (domainIds: string[], source: "suno" | "ai") => Promise<void>;
 }
 
 const STATUS_LABELS: Record<Track["status"], string> = {
@@ -180,11 +195,15 @@ export default function LibraryView({
   onRetry,
   onCreatePersona,
   onConvertToWav,
+  onGenerateCover,
+  onGenerateAlbumCover,
+  onSetCoverSource,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [retryBusy, setRetryBusy] = useState<string | null>(null);
   const [personaFor, setPersonaFor] = useState<string | null>(null);
   const [wavBusy, setWavBusy] = useState<string | null>(null);
+  const [coverBusy, setCoverBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   // wybrany wariant per utwór (domyślnie A)
@@ -285,32 +304,47 @@ export default function LibraryView({
     }
   }
 
-  /** Pobiera okładki wszystkich utworów albumu jako ZIP. */
+  /** Pobiera okładki wszystkich utworów albumu jako ZIP.
+   *  Wspólna okładka AI jest deduplikowana — jeden URL → pojedynczy plik zamiast ZIP. */
   async function downloadAlbumCovers(name: string, list: Track[]) {
     setMessage(null);
     const withCovers = list
       .map((t, i) => ({
         track: t,
         order: t.albumIndex ?? i,
-        imageUrl: getVariants(t)[variantIndex[t.id] ?? 0]?.imageUrl ?? t.imageUrl,
+        imageUrl: activeCover(t, getVariants(t)[variantIndex[t.id] ?? 0]),
       }))
       .filter((x) => x.imageUrl);
     if (withCovers.length === 0) {
       setMessage("Album nie ma jeszcze okładek");
       return;
     }
+    const unique = withCovers.filter(
+      (x, i) => withCovers.findIndex((y) => y.imageUrl === x.imageUrl) === i
+    );
     setAlbumBusy(`${name}:covers`);
-    const files = withCovers.map(({ track, order, imageUrl }) => ({
-      url: imageUrl!,
-      name: `${String(order + 1).padStart(2, "0")} - ${sanitizeFileName(track.title)}.${imageExt(imageUrl!)}`,
-    }));
     try {
+      if (unique.length === 1) {
+        const { track, imageUrl } = unique[0];
+        await downloadFile(
+          imageUrl!,
+          `${sanitizeFileName(name)} - okładka.${coverExt(imageUrl!, track)}`
+        );
+        setMessage(`Zapisano okładkę albumu „${name}”`);
+        return;
+      }
+      const files = unique.map(({ track, order, imageUrl }) => ({
+        url: imageUrl!,
+        name: `${String(order + 1).padStart(2, "0")} - ${sanitizeFileName(track.title)}.${coverExt(imageUrl!, track)}`,
+      }));
       const { saved } = await downloadZip(
         files,
         `${sanitizeFileName(name)} - okładki.zip`,
         (d, t) => setMessage(`Pakowanie okładek: ${d}/${t}`)
       );
-      setMessage(`Zapisano ZIP z okładkami albumu „${name}”: ${saved}/${withCovers.length}`);
+      setMessage(`Zapisano ZIP z okładkami albumu „${name}”: ${saved}/${unique.length}`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setAlbumBusy(null);
     }
@@ -416,8 +450,8 @@ export default function LibraryView({
             className={`track${playback?.queue[playback.index]?.trackId === track.id ? " playing" : ""}`}
           >
             <div className="track-header">
-              {(variant?.imageUrl ?? track.imageUrl) && (
-                <img className="track-cover" src={variant?.imageUrl ?? track.imageUrl} alt="" />
+              {activeCover(track, variant) && (
+                <img className="track-cover" src={activeCover(track, variant)} alt="" />
               )}
               <div className="track-meta">
                 <strong>{track.title}</strong>
@@ -484,13 +518,14 @@ export default function LibraryView({
                   )}
                 </button>
               )}
-              {variant?.imageUrl && (
+              {activeCover(track, variant) && (
                 <button
                   onClick={async () => {
+                    const url = activeCover(track, variant)!;
                     try {
                       await downloadFile(
-                        variant.imageUrl!,
-                        `${sanitizeFileName(variantName(track, selectedIndex))}.${imageExt(variant.imageUrl!)}`
+                        url,
+                        `${sanitizeFileName(variantName(track, selectedIndex))}.${coverExt(url, track)}`
                       );
                       setMessage(`Zapisano okładkę „${track.title}"`);
                     } catch (e) {
@@ -500,6 +535,42 @@ export default function LibraryView({
                 >
                   <ImageDown size={14} /> Okładka
                 </button>
+              )}
+              {track.status === "SUCCESS" && (
+                <button
+                  disabled={coverBusy === track.id}
+                  onClick={async () => {
+                    setMessage(null);
+                    setCoverBusy(track.id);
+                    try {
+                      await onGenerateCover(track.id);
+                      setMessage(`Wygenerowano okładkę AI „${track.title}"`);
+                    } catch (e) {
+                      setMessage(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setCoverBusy(null);
+                    }
+                  }}
+                >
+                  {coverBusy === track.id ? (
+                    <><Loader2 size={14} className="spin" /> Generuję okładkę...</>
+                  ) : (
+                    <><Sparkles size={14} /> Okładka AI</>
+                  )}
+                </button>
+              )}
+              {track.aiImageUrl && (
+                <span className="variant-switch" title="Która okładka jest aktywna">
+                  {(["suno", "ai"] as const).map((m) => (
+                    <button
+                      key={m}
+                      className={(track.coverSource ?? "suno") === m ? "active" : ""}
+                      onClick={() => void onSetCoverSource([track.id], m)}
+                    >
+                      {m === "ai" ? "AI" : "Suno"}
+                    </button>
+                  ))}
+                </span>
               )}
               {track.status === "FAILED" && (
                 <button
@@ -702,6 +773,45 @@ export default function LibraryView({
                   >
                     <FileText size={13} /> Teksty
                   </button>
+                  <button
+                    disabled={albumBusy !== null}
+                    onClick={async () => {
+                      setMessage(null);
+                      setAlbumBusy(`${section.name}:aicover`);
+                      try {
+                        await onGenerateAlbumCover(section.name!);
+                        setMessage(`Wygenerowano okładkę AI albumu „${section.name}”`);
+                      } catch (e) {
+                        setMessage(e instanceof Error ? e.message : String(e));
+                      } finally {
+                        setAlbumBusy(null);
+                      }
+                    }}
+                  >
+                    {busyKey === `${section.name}:aicover` ? (
+                      <Loader2 size={13} className="spin" />
+                    ) : (
+                      <Sparkles size={13} />
+                    )}{" "}
+                    Okładka AI
+                  </button>
+                  {section.tracks.some((t) => t.aiImageUrl) && (
+                    <span className="variant-switch" title="Która okładka albumu jest aktywna">
+                      {(["suno", "ai"] as const).map((m) => (
+                        <button
+                          key={m}
+                          className={
+                            (section.tracks[0]?.coverSource ?? "suno") === m ? "active" : ""
+                          }
+                          onClick={() =>
+                            void onSetCoverSource(section.tracks.map((t) => t.id), m)
+                          }
+                        >
+                          {m === "ai" ? "AI" : "Suno"}
+                        </button>
+                      ))}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
