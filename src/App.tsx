@@ -17,6 +17,7 @@ import {
   useQuery,
 } from "convex/react";
 import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../convex/_generated/api";
 import { setDownloadAuthToken } from "./services/download";
 import BalanceBar from "./components/BalanceBar";
@@ -42,6 +43,22 @@ import {
 } from "./types";
 
 type View = "create" | "album" | "files" | "library" | "player" | "settings";
+
+const VIEW_PATHS: Record<View, string> = {
+  create: "/tworz",
+  album: "/album",
+  files: "/pliki",
+  library: "/biblioteka",
+  player: "/odtwarzacz",
+  settings: "/ustawienia",
+};
+
+function pathToView(pathname: string): View | null {
+  const hit = (Object.entries(VIEW_PATHS) as [View, string][]).find(
+    ([, path]) => path === pathname
+  );
+  return hit ? hit[0] : null;
+}
 
 /** Trzyma ostatnią znaną wartość kwerendy. Przy reconnect'cie Convexa (deploy
  *  funkcji, odświeżenie tokenu, zanik sieci) useQuery chwilowo zwraca undefined —
@@ -107,7 +124,14 @@ function Studio() {
   // Proxy /download wymaga tokenu — trzymamy aktualny w module download.ts
   const authToken = useAuthToken();
   useEffect(() => setDownloadAuthToken(authToken ?? null), [authToken]);
-  const [view, setView] = useState<View>("create");
+  // Widok wynika z URL-a; złe/nieznane ścieżki normalizujemy efektem (nie
+  // <Navigate>), żeby ani na jeden render nie odmontować zawsze-żywych widoków.
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const view: View = pathToView(pathname) ?? "create";
+  useEffect(() => {
+    if (pathToView(pathname) === null) navigate(VIEW_PATHS.create, { replace: true });
+  }, [pathname, navigate]);
   // odtwarzanie albumu — na poziomie Studio, żeby grało niezależnie od zakładki
   const [playback, setPlayback] = useState<Playback | null>(null);
   const [balances, setBalances] = useState<Balances>({});
@@ -130,6 +154,7 @@ function Studio() {
 
   const saveSettingsM = useMutation(api.settings.save);
   const removeTrackM = useMutation(api.tracks.remove);
+  const patchTrackM = useMutation(api.tracks.patch);
   const addLibraryM = useMutation(api.library.add);
   const setKindM = useMutation(api.library.setKind);
   const removeLibraryM = useMutation(api.library.remove);
@@ -140,6 +165,8 @@ function Studio() {
   const startGenA = useAction(api.suno.startGeneration);
   const retryGenA = useAction(api.suno.retryGeneration);
   const convertWavA = useAction(api.suno.convertToWav);
+  const genCoverA = useAction(api.cover.generateTrackCover);
+  const genAlbumCoverA = useAction(api.cover.generateAlbumCover);
   const createPersonaA = useAction(api.suno.createPersona);
   const getCreditsA = useAction(api.suno.getCredits);
   const planAlbumA = useAction(api.album.plan);
@@ -300,7 +327,7 @@ function Studio() {
             <button
               key={id}
               className={view === id ? "active" : ""}
-              onClick={() => setView(id)}
+              onClick={() => navigate(VIEW_PATHS[id])}
             >
               {label}
               {count ? ` (${count})` : ""}
@@ -360,7 +387,7 @@ function Studio() {
             playback={playback}
             onPlay={(p) => {
               setPlayback(p);
-              setView("player");
+              navigate(VIEW_PATHS.player);
             }}
             onAddToQueue={(item) =>
               setPlayback((p) =>
@@ -377,6 +404,17 @@ function Studio() {
             }}
             onCreatePersona={handleCreatePersona}
             onConvertToWav={(domainId, audioId) => convertWavA({ domainId, audioId })}
+            onGenerateCover={async (id) => {
+              await genCoverA({ domainId: id });
+            }}
+            onGenerateAlbumCover={async (name) => {
+              await genAlbumCoverA({ album: name });
+            }}
+            onSetCoverSource={async (ids, source) => {
+              for (const id of ids) {
+                await patchTrackM({ domainId: id, patch: { coverSource: source } });
+              }
+            }}
           />
         </div>
         <div className={view === "settings" ? "" : "hidden"}>
@@ -393,7 +431,7 @@ function Studio() {
           <button
             key={id}
             className={view === id ? "active" : ""}
-            onClick={() => setView(id)}
+            onClick={() => navigate(VIEW_PATHS[id])}
           >
             <span className="bottom-nav-icon">
               <Icon size={20} />
